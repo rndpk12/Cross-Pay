@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: crosspay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crosspay
+      POSTGRES_USER: crosspay
+      POSTGRES_PASSWORD: crosspay_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - crosspay_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  crosspay_postgres_data:
