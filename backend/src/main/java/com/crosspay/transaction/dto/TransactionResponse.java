@@ -12,6 +12,11 @@ public record TransactionResponse(
         String status,
         String currency,
         BigDecimal amount,
+        String sourceCurrency,
+        String destinationCurrency,
+        BigDecimal sourceAmount,
+        BigDecimal destinationAmount,
+        UUID fxQuoteId,
         OffsetDateTime createdAt,
         OffsetDateTime completedAt
 ) {

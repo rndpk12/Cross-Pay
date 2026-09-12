@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test, package, and build image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 and Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Verify Maven Wrapper
+        working-directory: backend
+        run: ./mvnw --version
+
+      - name: Run complete test suite
+        working-directory: backend
+        run: ./mvnw clean test
+
+      - name: Package application
+        working-directory: backend
+        run: ./mvnw package
+
+      - name: Build production Docker image
+        working-directory: backend
+        run: docker build --tag crosspay-backend:${{ github.sha }} .

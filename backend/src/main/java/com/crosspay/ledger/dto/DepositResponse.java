@@ -5,10 +5,11 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record DepositResponse(
-        UUID ledgerEntryId,
+        UUID transactionId,
         String currency,
         BigDecimal amount,
-        String entryType,
-        String referenceType,
-        OffsetDateTime createdAt
-) {}
+        String status,
+        OffsetDateTime createdAt,
+        OffsetDateTime completedAt
+) {
+}

@@ -4,6 +4,8 @@
 # Maven
 target/
 *.class
+*.log
+logs/
 
 # IDE
 .vscode/

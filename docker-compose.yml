@@ -6,11 +6,37 @@ services:
     environment:
       POSTGRES_DB: crosspay
       POSTGRES_USER: crosspay
-      POSTGRES_PASSWORD: crosspay_dev
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment or .env file}
     ports:
       - "5432:5432"
     volumes:
       - crosspay_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/crosspay
+      DB_USERNAME: crosspay
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment or .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your environment or .env file}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-900000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+    ports:
+      - "${BACKEND_PORT:-8080}:${SERVER_PORT:-8080}"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   crosspay_postgres_data:

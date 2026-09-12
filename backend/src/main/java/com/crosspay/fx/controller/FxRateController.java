@@ -4,15 +4,19 @@ import com.crosspay.fx.dto.FxRateRequest;
 import com.crosspay.fx.dto.FxRateResponse;
 import com.crosspay.fx.entity.FxRate;
 import com.crosspay.fx.service.FxRateService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 
 @RestController
-@RequestMapping("/api/v1/fx-rates")
+@RequestMapping(value = "/api/v1/fx-rates", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "FX Rates", description = "Authenticated FX rate management and lookup.")
 public class FxRateController {
 
     private final FxRateService fxRateService;
@@ -24,6 +28,7 @@ public class FxRateController {
     }
 
     @PostMapping
+    @Operation(summary = "Create or update an FX rate", description = "Creates or updates the configured rate for a currency pair.")
     public ResponseEntity<FxRateResponse> createOrUpdateRate(
             @Valid @RequestBody FxRateRequest request
     ) {
@@ -40,6 +45,7 @@ public class FxRateController {
     }
 
     @GetMapping("/{baseCurrency}/{quoteCurrency}")
+    @Operation(summary = "Get an FX rate", description = "Returns the configured rate details for a base and quote currency pair.")
     public ResponseEntity<FxRateResponse> getRate(
             @PathVariable String baseCurrency,
             @PathVariable String quoteCurrency

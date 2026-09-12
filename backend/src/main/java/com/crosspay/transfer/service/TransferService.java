@@ -57,32 +57,21 @@ public class TransferService {
             String idempotencyKey
     ) {
 
-        /*
-         * ---------------------------------------------------------
-         * Validate sender
-         * ---------------------------------------------------------
-         */
-
+        // Validate sender
         if (senderUserId == null) {
             throw new IllegalArgumentException(
                     "Sender user ID is required"
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Validate idempotency key
-         * ---------------------------------------------------------
-         */
-
+        // Validate idempotency key
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException(
                     "Idempotency key is required"
             );
         }
 
-        String normalizedIdempotencyKey =
-                idempotencyKey.trim();
+        String normalizedIdempotencyKey = idempotencyKey.trim();
 
         if (normalizedIdempotencyKey.length() > 100) {
             throw new IllegalArgumentException(
@@ -90,12 +79,7 @@ public class TransferService {
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Validate request
-         * ---------------------------------------------------------
-         */
-
+        // Validate request
         if (request == null) {
             throw new IllegalArgumentException(
                     "Transfer request is required"
@@ -115,20 +99,14 @@ public class TransferService {
         }
 
         if (request.amount() == null
-                || request.amount()
-                .compareTo(BigDecimal.ZERO) <= 0) {
+                || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
 
             throw new IllegalArgumentException(
                     "Amount must be greater than zero"
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Prevent self-transfer
-         * ---------------------------------------------------------
-         */
-
+        // Prevent self-transfer
         if (senderUserId.equals(request.recipientUserId())) {
             throw new IllegalArgumentException(
                     "You cannot transfer money to yourself"
@@ -136,11 +114,53 @@ public class TransferService {
         }
 
         /*
-         * ---------------------------------------------------------
-         * Load sender
-         * ---------------------------------------------------------
+         * Lock the sender before checking idempotency.
+         *
+         * This prevents two concurrent requests from the same sender
+         * from both passing the idempotency check at the same time.
          */
+        userRepository.findByIdForUpdate(senderUserId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Sender user not found"
+                        )
+                );
 
+        /*
+         * Check idempotency BEFORE loading the FX quote.
+         *
+         * A retry of a completed transfer has a USED FX quote,
+         * so the existing transaction must be returned first.
+         */
+        Transaction existingTransaction =
+                transactionRepository
+                        .findBySenderUserIdAndIdempotencyKey(
+                                senderUserId,
+                                normalizedIdempotencyKey
+                        )
+                        .orElse(null);
+
+        if (existingTransaction != null) {
+
+            boolean sameRecipient =
+                    request.recipientUserId()
+                            .equals(existingTransaction.getRecipientUserId());
+
+            boolean sameAmount =
+                    request.amount().compareTo(
+                            existingTransaction.getAmount()
+                    ) == 0;
+
+            if (!sameRecipient || !sameAmount) {
+                throw new IllegalArgumentException(
+                        "Idempotency key was already used for a different transfer"
+                );
+            }
+
+            return existingTransaction;
+        }
+
+        // Load sender
         User sender =
                 userRepository.findById(senderUserId)
                         .orElseThrow(() ->
@@ -155,16 +175,9 @@ public class TransferService {
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Load recipient
-         * ---------------------------------------------------------
-         */
-
+        // Load recipient
         User recipient =
-                userRepository.findById(
-                                request.recipientUserId()
-                        )
+                userRepository.findById(request.recipientUserId())
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
                                         "Recipient user not found"
@@ -177,12 +190,7 @@ public class TransferService {
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Load FX quote
-         * ---------------------------------------------------------
-         */
-
+        // Load FX quote
         FxQuote quote =
                 fxQuoteService.getQuote(
                         senderUserId,
@@ -195,12 +203,7 @@ public class TransferService {
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Verify transfer amount matches quote
-         * ---------------------------------------------------------
-         */
-
+        // Verify transfer amount matches quote
         if (request.amount().compareTo(
                 quote.getSourceAmount()
         ) != 0) {
@@ -210,210 +213,100 @@ public class TransferService {
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Extract FX information from quote
-         * ---------------------------------------------------------
-         */
+        String sourceCurrency = quote.getFromCurrency();
+        String destinationCurrency = quote.getToCurrency();
 
-        String sourceCurrency =
-                quote.getFromCurrency();
+        BigDecimal sourceAmount = quote.getSourceAmount();
+        BigDecimal destinationAmount = quote.getConvertedAmount();
 
-        String destinationCurrency =
-                quote.getToCurrency();
-
-        BigDecimal sourceAmount =
-                quote.getSourceAmount();
-
-        BigDecimal destinationAmount =
-                quote.getConvertedAmount();
-
-        /*
-         * ---------------------------------------------------------
-         * Find sender wallet
-         * ---------------------------------------------------------
-         */
-
+        // Find sender wallet
         Wallet senderWallet =
-                walletService
-                        .findByUserIdAndCurrency(
-                                senderUserId,
-                                sourceCurrency
+                walletService.findByUserIdAndCurrency(
+                        senderUserId,
+                        sourceCurrency
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Sender wallet not found or is not active for this currency"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Sender wallet not found or is not active for this currency"
-                                )
-                        );
+                );
 
-        /*
-         * ---------------------------------------------------------
-         * Find recipient wallet
-         * ---------------------------------------------------------
-         */
-
+        // Find recipient wallet
         Wallet recipientWallet =
-                walletService
-                        .findByUserIdAndCurrency(
-                                request.recipientUserId(),
-                                destinationCurrency
+                walletService.findByUserIdAndCurrency(
+                        request.recipientUserId(),
+                        destinationCurrency
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Recipient wallet not found or is not active for this currency"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Recipient wallet not found or is not active for this currency"
-                                )
-                        );
+                );
 
-        /*
-         * ---------------------------------------------------------
-         * Find sender ledger account
-         * ---------------------------------------------------------
-         */
-
+        // Find sender ledger account
         LedgerAccount senderAccount =
-                ledgerAccountRepository
-                        .findByWalletId(
-                                senderWallet.getId()
+                ledgerAccountRepository.findByWalletId(
+                        senderWallet.getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Sender ledger account not found"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Sender ledger account not found"
-                                )
-                        );
+                );
 
-        /*
-         * ---------------------------------------------------------
-         * Find recipient ledger account
-         * ---------------------------------------------------------
-         */
-
+        // Find recipient ledger account
         LedgerAccount recipientAccount =
-                ledgerAccountRepository
-                        .findByWalletId(
-                                recipientWallet.getId()
+                ledgerAccountRepository.findByWalletId(
+                        recipientWallet.getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Recipient ledger account not found"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Recipient ledger account not found"
-                                )
-                        );
+                );
 
-        UUID senderAccountId =
-                senderAccount.getId();
+        UUID senderAccountId = senderAccount.getId();
+        UUID recipientAccountId = recipientAccount.getId();
 
-        UUID recipientAccountId =
-                recipientAccount.getId();
-
-        /*
-         * ---------------------------------------------------------
-         * Lock both ledger accounts in deterministic order
-         * ---------------------------------------------------------
-         */
-
+        // Lock both ledger accounts in deterministic order
         UUID firstAccountId;
         UUID secondAccountId;
 
-        if (senderAccountId.compareTo(
-                recipientAccountId
-        ) < 0) {
-
-            firstAccountId =
-                    senderAccountId;
-
-            secondAccountId =
-                    recipientAccountId;
-
+        if (senderAccountId.compareTo(recipientAccountId) < 0) {
+            firstAccountId = senderAccountId;
+            secondAccountId = recipientAccountId;
         } else {
-
-            firstAccountId =
-                    recipientAccountId;
-
-            secondAccountId =
-                    senderAccountId;
+            firstAccountId = recipientAccountId;
+            secondAccountId = senderAccountId;
         }
 
-        ledgerAccountRepository
-                .findByIdForUpdate(firstAccountId)
+        ledgerAccountRepository.findByIdForUpdate(firstAccountId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Ledger account not found"
                         )
                 );
 
-        ledgerAccountRepository
-                .findByIdForUpdate(secondAccountId)
+        ledgerAccountRepository.findByIdForUpdate(secondAccountId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Ledger account not found"
                         )
                 );
 
-        /*
-         * ---------------------------------------------------------
-         * Check idempotency
-         * ---------------------------------------------------------
-         */
-
-        Transaction existingTransaction =
-                transactionRepository
-                        .findBySenderUserIdAndIdempotencyKey(
-                                senderUserId,
-                                normalizedIdempotencyKey
-                        )
-                        .orElse(null);
-
-        if (existingTransaction != null) {
-
-            boolean sameRecipient =
-                    request.recipientUserId()
-                            .equals(
-                                    existingTransaction
-                                            .getRecipientUserId()
-                            );
-
-            boolean sameAmount =
-                    sourceAmount.compareTo(
-                            existingTransaction.getAmount()
-                    ) == 0;
-
-            if (!sameRecipient || !sameAmount) {
-                throw new IllegalArgumentException(
-                        "Idempotency key was already used for a different transfer"
-                );
-            }
-
-            return existingTransaction;
-        }
-
-        /*
-         * ---------------------------------------------------------
-         * Calculate sender balance
-         * ---------------------------------------------------------
-         */
-
+        // Calculate sender balance
         BigDecimal senderBalance =
                 ledgerEntryRepository.calculateBalance(
                         senderAccountId
                 );
 
-        if (senderBalance.compareTo(
-                sourceAmount
-        ) < 0) {
-
+        if (senderBalance.compareTo(sourceAmount) < 0) {
             throw new IllegalArgumentException(
                     "Insufficient balance"
             );
         }
 
-        /*
-         * ---------------------------------------------------------
-         * Create transaction
-         * ---------------------------------------------------------
-         *
-         * IMPORTANT:
-         * TransactionService now requires all FX fields.
-         */
-
+        // Create transaction
         Transaction savedTransaction =
                 transactionService.createTransferTransaction(
                         senderUserId,
@@ -426,120 +319,45 @@ public class TransferService {
                         normalizedIdempotencyKey
                 );
 
-        /*
-         * ---------------------------------------------------------
-         * Create sender debit
-         * ---------------------------------------------------------
-         */
+        OffsetDateTime now = savedTransaction.getCreatedAt();
 
-        OffsetDateTime now =
-                savedTransaction.getCreatedAt();
+        // Create sender debit
+        LedgerEntry debit = new LedgerEntry();
 
-        LedgerEntry debit =
-                new LedgerEntry();
-
-        debit.setId(
-                UUID.randomUUID()
-        );
-
-        debit.setLedgerAccountId(
-                senderAccountId
-        );
-
-        debit.setTransactionId(
-                savedTransaction.getId()
-        );
-
-        debit.setAmount(
-                sourceAmount
-        );
-
-        debit.setEntryType(
-                "DEBIT"
-        );
-
-        debit.setCurrency(
-                sourceCurrency
-        );
-
-        debit.setReferenceType(
-                "TRANSFER"
-        );
-
-        debit.setReferenceId(
-                savedTransaction.getId()
-        );
-
+        debit.setId(UUID.randomUUID());
+        debit.setLedgerAccountId(senderAccountId);
+        debit.setTransactionId(savedTransaction.getId());
+        debit.setAmount(sourceAmount);
+        debit.setEntryType("DEBIT");
+        debit.setCurrency(sourceCurrency);
+        debit.setReferenceType("TRANSFER");
+        debit.setReferenceId(savedTransaction.getId());
         debit.setCreatedAt(now);
 
-        ledgerEntryRepository.save(
-                debit
-        );
+        ledgerEntryRepository.save(debit);
 
-        /*
-         * ---------------------------------------------------------
-         * Create recipient credit
-         * ---------------------------------------------------------
-         */
+        // Create recipient credit
+        LedgerEntry credit = new LedgerEntry();
 
-        LedgerEntry credit =
-                new LedgerEntry();
-
-        credit.setId(
-                UUID.randomUUID()
-        );
-
-        credit.setLedgerAccountId(
-                recipientAccountId
-        );
-
-        credit.setTransactionId(
-                savedTransaction.getId()
-        );
-
-        credit.setAmount(
-                destinationAmount
-        );
-
-        credit.setEntryType(
-                "CREDIT"
-        );
-
-        credit.setCurrency(
-                destinationCurrency
-        );
-
-        credit.setReferenceType(
-                "TRANSFER"
-        );
-
-        credit.setReferenceId(
-                savedTransaction.getId()
-        );
-
+        credit.setId(UUID.randomUUID());
+        credit.setLedgerAccountId(recipientAccountId);
+        credit.setTransactionId(savedTransaction.getId());
+        credit.setAmount(destinationAmount);
+        credit.setEntryType("CREDIT");
+        credit.setCurrency(destinationCurrency);
+        credit.setReferenceType("TRANSFER");
+        credit.setReferenceId(savedTransaction.getId());
         credit.setCreatedAt(now);
 
-        ledgerEntryRepository.save(
-                credit
-        );
+        ledgerEntryRepository.save(credit);
 
-        /*
-         * ---------------------------------------------------------
-         * Mark FX quote as used
-         * ---------------------------------------------------------
-         */
-
+        // Mark FX quote as used
         fxQuoteService.useQuote(
                 senderUserId,
                 quote.getId()
         );
 
-        /*
-         * ---------------------------------------------------------
-         * Complete transaction
-         * ---------------------------------------------------------
-         */
-
+        // Complete transaction
         return transactionService.completeTransaction(
                 savedTransaction.getId()
         );

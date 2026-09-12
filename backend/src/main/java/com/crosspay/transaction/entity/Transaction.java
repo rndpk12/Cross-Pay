@@ -19,27 +19,21 @@ public class Transaction {
     @Column(name = "recipient_user_id")
     private UUID recipientUserId;
 
+    @Column(name = "initiated_by_user_id")
+    private UUID initiatedByUserId;
+
     @Column(name = "transaction_type", nullable = false, length = 30)
     private String transactionType;
 
     @Column(nullable = false, length = 20)
     private String status;
 
-    /*
-     * Legacy transaction fields.
-     *
-     * Kept for compatibility with the existing schema
-     * and older transactions.
-     */
     @Column(nullable = false, length = 3)
     private String currency;
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
-    /*
-     * Cross-currency transaction fields.
-     */
     @Column(name = "source_currency", length = 3)
     private String sourceCurrency;
 
@@ -71,128 +65,124 @@ public class Transaction {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public UUID getSenderUserId() {
         return senderUserId;
-    }
-
-    public void setSenderUserId(UUID senderUserId) {
-        this.senderUserId = senderUserId;
     }
 
     public UUID getRecipientUserId() {
         return recipientUserId;
     }
 
-    public void setRecipientUserId(UUID recipientUserId) {
-        this.recipientUserId = recipientUserId;
+    public UUID getInitiatedByUserId() {
+        return initiatedByUserId;
     }
 
     public String getTransactionType() {
         return transactionType;
     }
 
-    public void setTransactionType(String transactionType) {
-        this.transactionType = transactionType;
-    }
-
     public String getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    /*
-     * Legacy fields.
-     */
     public String getCurrency() {
         return currency;
-    }
-
-    public void setCurrency(String currency) {
-        this.currency = currency;
     }
 
     public BigDecimal getAmount() {
         return amount;
     }
 
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    /*
-     * FX fields.
-     */
     public String getSourceCurrency() {
         return sourceCurrency;
-    }
-
-    public void setSourceCurrency(String sourceCurrency) {
-        this.sourceCurrency = sourceCurrency;
     }
 
     public String getDestinationCurrency() {
         return destinationCurrency;
     }
 
-    public void setDestinationCurrency(String destinationCurrency) {
-        this.destinationCurrency = destinationCurrency;
-    }
-
     public BigDecimal getSourceAmount() {
         return sourceAmount;
-    }
-
-    public void setSourceAmount(BigDecimal sourceAmount) {
-        this.sourceAmount = sourceAmount;
     }
 
     public BigDecimal getDestinationAmount() {
         return destinationAmount;
     }
 
-    public void setDestinationAmount(BigDecimal destinationAmount) {
-        this.destinationAmount = destinationAmount;
-    }
-
     public UUID getFxQuoteId() {
         return fxQuoteId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setSenderUserId(UUID senderUserId) {
+        this.senderUserId = senderUserId;
+    }
+
+    public void setRecipientUserId(UUID recipientUserId) {
+        this.recipientUserId = recipientUserId;
+    }
+
+    public void setInitiatedByUserId(UUID initiatedByUserId) {
+        this.initiatedByUserId = initiatedByUserId;
+    }
+
+    public void setTransactionType(String transactionType) {
+        this.transactionType = transactionType;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public void setSourceCurrency(String sourceCurrency) {
+        this.sourceCurrency = sourceCurrency;
+    }
+
+    public void setDestinationCurrency(String destinationCurrency) {
+        this.destinationCurrency = destinationCurrency;
+    }
+
+    public void setSourceAmount(BigDecimal sourceAmount) {
+        this.sourceAmount = sourceAmount;
+    }
+
+    public void setDestinationAmount(BigDecimal destinationAmount) {
+        this.destinationAmount = destinationAmount;
     }
 
     public void setFxQuoteId(UUID fxQuoteId) {
         this.fxQuoteId = fxQuoteId;
     }
 
-    /*
-     * Idempotency.
-     */
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
-
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
     }
 
-    /*
-     * Timestamps.
-     */
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public OffsetDateTime getCompletedAt() {
-        return completedAt;
     }
 
     public void setCompletedAt(OffsetDateTime completedAt) {

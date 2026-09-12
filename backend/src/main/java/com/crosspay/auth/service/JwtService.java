@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -23,6 +24,12 @@ public class JwtService {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration}") long expiration
     ) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 bytes");
+        }
+        if (expiration <= 0) {
+            throw new IllegalStateException("JWT expiration must be positive");
+        }
         this.secretKey = Keys.hmacShaKeyFor(
                 secret.getBytes(StandardCharsets.UTF_8)
         );
@@ -39,33 +46,28 @@ public class JwtService {
                 .claim("email", user.getEmail())
                 .issuedAt(now)
                 .expiration(expiry)
-                .signWith(secretKey)
+                .signWith(secretKey, Jwts.SIG.HS256)
                 .compact();
     }
 
-    public UUID extractUserId(String token) {
-
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        return UUID.fromString(claims.getSubject());
+    public Optional<UUID> extractUserId(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            String subject = claims.getSubject();
+            if (subject == null) {
+                return Optional.empty();
+            }
+            return Optional.of(UUID.fromString(subject));
+        } catch (JwtException | IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 
     public boolean isValid(String token) {
-
-        try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
-
-            return true;
-
-        } catch (JwtException | IllegalArgumentException exception) {
-            return false;
-        }
+        return extractUserId(token).isPresent();
     }
 }

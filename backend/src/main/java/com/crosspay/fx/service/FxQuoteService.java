@@ -2,6 +2,9 @@ package com.crosspay.fx.service;
 
 import com.crosspay.fx.entity.FxQuote;
 import com.crosspay.fx.repository.FxQuoteRepository;
+import com.crosspay.common.observability.FinancialOperationMetrics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +16,8 @@ import java.util.UUID;
 @Service
 public class FxQuoteService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(FxQuoteService.class);
+
     private static final int QUOTE_VALIDITY_MINUTES = 10;
 
     private static final BigDecimal ZERO =
@@ -20,13 +25,16 @@ public class FxQuoteService {
 
     private final FxRateService fxRateService;
     private final FxQuoteRepository fxQuoteRepository;
+    private final FinancialOperationMetrics metrics;
 
     public FxQuoteService(
             FxRateService fxRateService,
-            FxQuoteRepository fxQuoteRepository
+            FxQuoteRepository fxQuoteRepository,
+            FinancialOperationMetrics metrics
     ) {
         this.fxRateService = fxRateService;
         this.fxQuoteRepository = fxQuoteRepository;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -137,6 +145,8 @@ public class FxQuoteService {
             quote.setStatus("EXPIRED");
 
             fxQuoteRepository.save(quote);
+            metrics.quoteExpired();
+            LOGGER.info("event=fx_quote_expired quoteId={} userId={}", quote.getId(), userId);
 
             throw new IllegalArgumentException(
                     "Quote has expired"
@@ -151,11 +161,36 @@ public class FxQuoteService {
             UUID userId,
             UUID quoteId
     ) {
+        validateUserId(userId);
+
+        if (quoteId == null) {
+            throw new IllegalArgumentException(
+                    "Quote ID is required"
+            );
+        }
+
+        /*
+         * Quote consumption is a financial state transition. Locking the row
+         * makes ACTIVE -> USED atomic across application instances; a second
+         * transfer waits, then observes USED and rolls back its own work.
+         */
         FxQuote quote =
-                getQuote(
-                        userId,
-                        quoteId
-                );
+                fxQuoteRepository
+                        .findByIdAndUserIdForUpdate(
+                                quoteId,
+                                userId
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Quote not found"
+                                )
+                        );
+
+        if (OffsetDateTime.now().isAfter(quote.getExpiresAt())) {
+            throw new IllegalArgumentException(
+                    "Quote has expired"
+            );
+        }
 
         if (!"ACTIVE".equals(quote.getStatus())) {
             throw new IllegalArgumentException(
@@ -165,8 +200,10 @@ public class FxQuoteService {
         }
 
         quote.setStatus("USED");
-
-        return fxQuoteRepository.save(quote);
+        FxQuote usedQuote = fxQuoteRepository.save(quote);
+        metrics.quoteUsed();
+        LOGGER.info("event=fx_quote_used quoteId={} userId={}", usedQuote.getId(), userId);
+        return usedQuote;
     }
 
     private BigDecimal calculateFee(

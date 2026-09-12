@@ -10,12 +10,16 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
 
@@ -39,18 +43,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authorizationHeader.substring(7);
+        String token = authorizationHeader.substring(7).trim();
 
-        if (!jwtService.isValid(token)) {
+        Optional<UUID> userId = jwtService.extractUserId(token);
+        if (userId.isEmpty()) {
+            LOGGER.warn("event=invalid_jwt path={}", request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
 
-        UUID userId = jwtService.extractUserId(token);
-
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
-                        userId,
+                        userId.get(),
                         null,
                         AuthorityUtils.NO_AUTHORITIES
                 );

@@ -144,6 +144,7 @@ public class WalletService {
         return savedWallet;
     }
 
+    @Transactional(readOnly = true)
     public Optional<Wallet> findByUserIdAndCurrency(
             UUID userId,
             String currency
@@ -164,21 +165,20 @@ public class WalletService {
                 );
     }
 
+    @Transactional(readOnly = true)
     public List<Wallet> findByUserId(
             UUID userId
     ) {
 
         validateUserId(userId);
 
-        return walletRepository
-                .findByUserId(userId)
-                .stream()
-                .filter(wallet ->
-                        "ACTIVE".equals(wallet.getStatus())
-                )
-                .toList();
+        return walletRepository.findByUserIdAndStatusOrderByCurrencyAsc(
+                userId,
+                "ACTIVE"
+        );
     }
 
+    @Transactional(readOnly = true)
     public BigDecimal calculateBalance(
             UUID walletId
     ) {

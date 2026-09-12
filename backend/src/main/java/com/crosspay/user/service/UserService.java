@@ -30,7 +30,7 @@ public class UserService {
         String email = request.email().trim().toLowerCase();
 
         if (userRepository.findByEmail(email).isPresent()) {
-            throw new IllegalArgumentException("Email is already registered");
+            throw new IllegalArgumentException("Unable to register with these details");
         }
 
         User user = new User();
@@ -73,7 +73,7 @@ public class UserService {
         }
 
         if (!user.getStatus().equals("ACTIVE")) {
-            throw new IllegalArgumentException("User account is not active");
+            throw new IllegalArgumentException("Invalid email or password");
         }
 
         return user;

@@ -93,10 +93,12 @@ public class TransactionService {
         String normalizedIdempotencyKey =
                 idempotencyKey.trim();
 
-        /*
-         * Return the existing transaction when the same
-         * idempotency key has already been processed.
-         */
+        if (normalizedIdempotencyKey.length() > 100) {
+            throw new IllegalArgumentException(
+                    "Idempotency key must not exceed 100 characters"
+            );
+        }
+
         Optional<Transaction> existingTransaction =
                 transactionRepository
                         .findBySenderUserIdAndIdempotencyKey(
@@ -117,6 +119,8 @@ public class TransactionService {
         transaction.setSenderUserId(senderUserId);
 
         transaction.setRecipientUserId(recipientUserId);
+
+        transaction.setInitiatedByUserId(senderUserId);
 
         transaction.setTransactionType("TRANSFER");
 
@@ -157,6 +161,155 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    @Transactional
+    public Transaction createDepositTransaction(
+            UUID userId,
+            String currency,
+            BigDecimal amount,
+            String idempotencyKey
+    ) {
+
+        if (userId == null) {
+            throw new IllegalArgumentException(
+                    "User ID is required"
+            );
+        }
+
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Currency is required"
+            );
+        }
+
+        if (amount == null
+                || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(
+                    "Amount must be greater than zero"
+            );
+        }
+
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Idempotency key is required"
+            );
+        }
+
+        String normalizedCurrency =
+                currency.trim().toUpperCase();
+
+        String normalizedIdempotencyKey =
+                idempotencyKey.trim();
+
+        if (normalizedIdempotencyKey.length() > 100) {
+            throw new IllegalArgumentException(
+                    "Idempotency key must not exceed 100 characters"
+            );
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Transaction transaction = new Transaction();
+
+        transaction.setId(UUID.randomUUID());
+
+        /*
+         * A deposit has no sender or recipient.
+         * The authenticated user is the initiator.
+         */
+        transaction.setSenderUserId(null);
+
+        transaction.setRecipientUserId(null);
+
+        transaction.setInitiatedByUserId(userId);
+
+        transaction.setTransactionType("DEPOSIT");
+
+        transaction.setStatus("PENDING");
+
+        /*
+         * Legacy transaction fields.
+         */
+        transaction.setCurrency(
+                normalizedCurrency
+        );
+
+        transaction.setAmount(amount);
+
+        /*
+         * Deposit is not an FX transaction.
+         */
+        transaction.setSourceCurrency(null);
+
+        transaction.setDestinationCurrency(null);
+
+        transaction.setSourceAmount(null);
+
+        transaction.setDestinationAmount(null);
+
+        transaction.setFxQuoteId(null);
+
+        transaction.setIdempotencyKey(
+                normalizedIdempotencyKey
+        );
+
+        transaction.setCreatedAt(now);
+
+        return transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public Transaction createWithdrawalTransaction(
+            UUID userId,
+            String currency,
+            BigDecimal amount,
+            String idempotencyKey
+    ) {
+
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("Currency is required");
+        }
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency key is required");
+        }
+
+        String normalizedCurrency = currency.trim().toUpperCase();
+        String normalizedIdempotencyKey = idempotencyKey.trim();
+
+        if (normalizedIdempotencyKey.length() > 100) {
+            throw new IllegalArgumentException(
+                    "Idempotency key must not exceed 100 characters"
+            );
+        }
+
+        Transaction transaction = new Transaction();
+        transaction.setId(UUID.randomUUID());
+        transaction.setSenderUserId(null);
+        transaction.setRecipientUserId(null);
+        transaction.setInitiatedByUserId(userId);
+        transaction.setTransactionType("WITHDRAWAL");
+        transaction.setStatus("PENDING");
+        transaction.setCurrency(normalizedCurrency);
+        transaction.setAmount(amount);
+        transaction.setSourceCurrency(null);
+        transaction.setDestinationCurrency(null);
+        transaction.setSourceAmount(null);
+        transaction.setDestinationAmount(null);
+        transaction.setFxQuoteId(null);
+        transaction.setIdempotencyKey(normalizedIdempotencyKey);
+        transaction.setCreatedAt(OffsetDateTime.now());
+
+        return transactionRepository.save(transaction);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Transaction> findBySenderAndIdempotencyKey(
             UUID senderUserId,
@@ -178,6 +331,31 @@ public class TransactionService {
         return transactionRepository
                 .findBySenderUserIdAndIdempotencyKey(
                         senderUserId,
+                        idempotencyKey.trim()
+                );
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Transaction> findByInitiatorAndIdempotencyKey(
+            UUID userId,
+            String idempotencyKey
+    ) {
+
+        if (userId == null) {
+            throw new IllegalArgumentException(
+                    "User ID is required"
+            );
+        }
+
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Idempotency key is required"
+            );
+        }
+
+        return transactionRepository
+                .findByInitiatedByUserIdAndIdempotencyKey(
+                        userId,
                         idempotencyKey.trim()
                 );
     }
