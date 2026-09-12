@@ -15,4 +15,4 @@ target/
 *.env
 
 # Spring local configuration
-application-local.properties
+application-local.propertiesstartup.log
