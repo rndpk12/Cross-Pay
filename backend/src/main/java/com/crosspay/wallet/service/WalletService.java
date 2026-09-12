@@ -12,10 +12,22 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class WalletService {
+
+    private static final Set<String> SUPPORTED_CURRENCIES = Set.of(
+            "USD",
+            "EUR",
+            "GBP",
+            "INR",
+            "CAD",
+            "AUD",
+            "SGD",
+            "JPY"
+    );
 
     private final WalletRepository walletRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
@@ -32,12 +44,25 @@ public class WalletService {
     }
 
     @Transactional
-    public Wallet createWallet(UUID userId, String currency) {
+    public Wallet createWallet(
+            UUID userId,
+            String currency
+    ) {
 
-        String normalizedCurrency = currency.trim().toUpperCase();
+        validateUserId(userId);
 
+        String normalizedCurrency =
+                normalizeAndValidateCurrency(currency);
+
+        /*
+         * Prevent duplicate wallet for the same
+         * user and currency.
+         */
         if (walletRepository
-                .findByUserIdAndCurrency(userId, normalizedCurrency)
+                .findByUserIdAndCurrency(
+                        userId,
+                        normalizedCurrency
+                )
                 .isPresent()) {
 
             throw new IllegalArgumentException(
@@ -45,29 +70,76 @@ public class WalletService {
             );
         }
 
-        Wallet wallet = new Wallet();
+        OffsetDateTime now =
+                OffsetDateTime.now();
 
-        wallet.setId(UUID.randomUUID());
-        wallet.setUserId(userId);
-        wallet.setCurrency(normalizedCurrency);
-        wallet.setBalance(BigDecimal.ZERO);
-        wallet.setStatus("ACTIVE");
+        /*
+         * Create wallet.
+         */
+        Wallet wallet =
+                new Wallet();
 
-        OffsetDateTime now = OffsetDateTime.now();
-        wallet.setCreatedAt(now);
-        wallet.setUpdatedAt(now);
+        wallet.setId(
+                UUID.randomUUID()
+        );
 
-        Wallet savedWallet = walletRepository.save(wallet);
+        wallet.setUserId(
+                userId
+        );
 
-        LedgerAccount ledgerAccount = new LedgerAccount();
+        wallet.setCurrency(
+                normalizedCurrency
+        );
 
-        ledgerAccount.setId(UUID.randomUUID());
-        ledgerAccount.setWalletId(savedWallet.getId());
-        ledgerAccount.setAccountType("USER_WALLET");
-        ledgerAccount.setCurrency(normalizedCurrency);
-        ledgerAccount.setCreatedAt(now);
+        wallet.setBalance(
+                BigDecimal.ZERO
+        );
 
-        ledgerAccountRepository.save(ledgerAccount);
+        wallet.setStatus(
+                "ACTIVE"
+        );
+
+        wallet.setCreatedAt(
+                now
+        );
+
+        wallet.setUpdatedAt(
+                now
+        );
+
+        Wallet savedWallet =
+                walletRepository.save(wallet);
+
+        /*
+         * Every wallet gets exactly one
+         * corresponding ledger account.
+         */
+        LedgerAccount ledgerAccount =
+                new LedgerAccount();
+
+        ledgerAccount.setId(
+                UUID.randomUUID()
+        );
+
+        ledgerAccount.setWalletId(
+                savedWallet.getId()
+        );
+
+        ledgerAccount.setAccountType(
+                "USER_WALLET"
+        );
+
+        ledgerAccount.setCurrency(
+                normalizedCurrency
+        );
+
+        ledgerAccount.setCreatedAt(
+                now
+        );
+
+        ledgerAccountRepository.save(
+                ledgerAccount
+        );
 
         return savedWallet;
     }
@@ -76,28 +148,124 @@ public class WalletService {
             UUID userId,
             String currency
     ) {
-        return walletRepository.findByUserIdAndCurrency(
-                userId,
-                currency.trim().toUpperCase()
-        );
-    }
 
-    public List<Wallet> findByUserId(UUID userId) {
-        return walletRepository.findByUserId(userId);
-    }
+        validateUserId(userId);
 
-    public BigDecimal calculateBalance(UUID walletId) {
+        String normalizedCurrency =
+                normalizeAndValidateCurrency(currency);
 
-        LedgerAccount account = ledgerAccountRepository
-                .findByWalletId(walletId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Ledger account not found for wallet"
-                        )
+        return walletRepository
+                .findByUserIdAndCurrency(
+                        userId,
+                        normalizedCurrency
+                )
+                .filter(wallet ->
+                        "ACTIVE".equals(wallet.getStatus())
                 );
+    }
 
+    public List<Wallet> findByUserId(
+            UUID userId
+    ) {
+
+        validateUserId(userId);
+
+        return walletRepository
+                .findByUserId(userId)
+                .stream()
+                .filter(wallet ->
+                        "ACTIVE".equals(wallet.getStatus())
+                )
+                .toList();
+    }
+
+    public BigDecimal calculateBalance(
+            UUID walletId
+    ) {
+
+        if (walletId == null) {
+            throw new IllegalArgumentException(
+                    "Wallet ID is required"
+            );
+        }
+
+        Wallet wallet =
+                walletRepository.findById(walletId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Wallet not found"
+                                )
+                        );
+
+        if (!"ACTIVE".equals(wallet.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Wallet is not active"
+            );
+        }
+
+        LedgerAccount account =
+                ledgerAccountRepository
+                        .findByWalletId(walletId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Ledger account not found for wallet"
+                                )
+                        );
+
+        /*
+         * Balance is derived from ledger entries.
+         *
+         * The ledger is the source of truth for
+         * financial balance.
+         */
         return ledgerEntryRepository.calculateBalance(
                 account.getId()
         );
+    }
+
+    private String normalizeAndValidateCurrency(
+            String currency
+    ) {
+
+        if (currency == null
+                || currency.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Currency is required"
+            );
+        }
+
+        String normalizedCurrency =
+                currency.trim().toUpperCase();
+
+        if (normalizedCurrency.length() != 3) {
+
+            throw new IllegalArgumentException(
+                    "Currency must be a 3-letter ISO currency code"
+            );
+        }
+
+        if (!SUPPORTED_CURRENCIES
+                .contains(normalizedCurrency)) {
+
+            throw new IllegalArgumentException(
+                    "Unsupported currency: "
+                            + normalizedCurrency
+            );
+        }
+
+        return normalizedCurrency;
+    }
+
+    private void validateUserId(
+            UUID userId
+    ) {
+
+        if (userId == null) {
+
+            throw new IllegalArgumentException(
+                    "User ID is required"
+            );
+        }
     }
 }

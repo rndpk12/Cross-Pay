@@ -17,32 +17,42 @@ public class TransferController {
 
     private final TransferService transferService;
 
-    public TransferController(TransferService transferService) {
+    public TransferController(
+            TransferService transferService
+    ) {
         this.transferService = transferService;
     }
 
     @PostMapping
     public ResponseEntity<TransferResponse> transfer(
             Authentication authentication,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody TransferRequest request
     ) {
 
-        UUID senderUserId = (UUID) authentication.getPrincipal();
+        UUID senderUserId =
+                (UUID) authentication.getPrincipal();
 
-        Transaction transaction = transferService.transfer(
-                senderUserId,
-                request
-        );
+        Transaction transaction =
+                transferService.transfer(
+                        senderUserId,
+                        request,
+                        idempotencyKey
+                );
 
-        TransferResponse response = new TransferResponse(
-                transaction.getId(),
-                request.recipientUserId(),
-                transaction.getCurrency(),
-                request.amount(),
-                transaction.getStatus(),
-                transaction.getCreatedAt(),
-                transaction.getCompletedAt()
-        );
+        TransferResponse response =
+                new TransferResponse(
+                        transaction.getId(),
+                        transaction.getRecipientUserId(),
+                        transaction.getSourceCurrency(),
+                        transaction.getDestinationCurrency(),
+                        transaction.getSourceAmount(),
+                        transaction.getDestinationAmount(),
+                        transaction.getFxQuoteId(),
+                        transaction.getStatus(),
+                        transaction.getCreatedAt(),
+                        transaction.getCompletedAt()
+                );
 
         return ResponseEntity.ok(response);
     }

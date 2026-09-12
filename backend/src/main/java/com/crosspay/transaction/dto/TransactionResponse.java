@@ -11,6 +11,7 @@ public record TransactionResponse(
         String transactionType,
         String status,
         String currency,
+        BigDecimal amount,
         OffsetDateTime createdAt,
         OffsetDateTime completedAt
 ) {

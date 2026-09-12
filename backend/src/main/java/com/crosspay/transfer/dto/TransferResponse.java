@@ -5,12 +5,25 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record TransferResponse(
+
         UUID transactionId,
+
         UUID recipientUserId,
-        String currency,
-        BigDecimal amount,
+
+        String sourceCurrency,
+
+        String destinationCurrency,
+
+        BigDecimal sourceAmount,
+
+        BigDecimal destinationAmount,
+
+        UUID fxQuoteId,
+
         String status,
+
         OffsetDateTime createdAt,
+
         OffsetDateTime completedAt
-) {
-}
+
+) {}

@@ -28,7 +28,6 @@ public class TransactionController {
     public ResponseEntity<List<TransactionResponse>> getTransactions(
             Authentication authentication
     ) {
-
         UUID userId = (UUID) authentication.getPrincipal();
 
         List<Transaction> transactions =
@@ -47,6 +46,7 @@ public class TransactionController {
                                 transaction.getTransactionType(),
                                 transaction.getStatus(),
                                 transaction.getCurrency(),
+                                transaction.getAmount(),
                                 transaction.getCreatedAt(),
                                 transaction.getCompletedAt()
                         ))

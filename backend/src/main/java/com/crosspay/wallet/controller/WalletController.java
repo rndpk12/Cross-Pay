@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,7 +20,9 @@ public class WalletController {
 
     private final WalletService walletService;
 
-    public WalletController(WalletService walletService) {
+    public WalletController(
+            WalletService walletService
+    ) {
         this.walletService = walletService;
     }
 
@@ -29,21 +32,29 @@ public class WalletController {
             @Valid @RequestBody CreateWalletRequest request
     ) {
 
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId =
+                (UUID) authentication.getPrincipal();
 
-        Wallet wallet = walletService.createWallet(
-                userId,
-                request.currency()
-        );
+        Wallet wallet =
+                walletService.createWallet(
+                        userId,
+                        request.currency()
+                );
 
-        WalletResponse response = new WalletResponse(
-                wallet.getId(),
-                wallet.getCurrency(),
-                wallet.getBalance(),
-                wallet.getStatus(),
-                wallet.getCreatedAt(),
-                wallet.getUpdatedAt()
-        );
+        BigDecimal balance =
+                walletService.calculateBalance(
+                        wallet.getId()
+                );
+
+        WalletResponse response =
+                new WalletResponse(
+                        wallet.getId(),
+                        wallet.getCurrency(),
+                        balance,
+                        wallet.getStatus(),
+                        wallet.getCreatedAt(),
+                        wallet.getUpdatedAt()
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -55,20 +66,30 @@ public class WalletController {
             Authentication authentication
     ) {
 
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId =
+                (UUID) authentication.getPrincipal();
 
-        List<WalletResponse> responses = walletService
-                .findByUserId(userId)
-                .stream()
-                .map(wallet -> new WalletResponse(
-                        wallet.getId(),
-                        wallet.getCurrency(),
-                        walletService.calculateBalance(wallet.getId()),
-                        wallet.getStatus(),
-                        wallet.getCreatedAt(),
-                        wallet.getUpdatedAt()
-                ))
-                .toList();
+        List<WalletResponse> responses =
+                walletService
+                        .findByUserId(userId)
+                        .stream()
+                        .map(wallet -> {
+
+                            BigDecimal balance =
+                                    walletService.calculateBalance(
+                                            wallet.getId()
+                                    );
+
+                            return new WalletResponse(
+                                    wallet.getId(),
+                                    wallet.getCurrency(),
+                                    balance,
+                                    wallet.getStatus(),
+                                    wallet.getCreatedAt(),
+                                    wallet.getUpdatedAt()
+                            );
+                        })
+                        .toList();
 
         return ResponseEntity.ok(responses);
     }
