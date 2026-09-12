@@ -21,5 +21,5 @@ COPY --from=build --chown=crosspay:crosspay /workspace/target/*.jar /app/app.jar
 
 USER crosspay
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 CMD ["curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 CMD ["sh", "-c", "curl --fail --silent http://localhost:${PORT:-${SERVER_PORT:-8080}}/actuator/health"]
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
