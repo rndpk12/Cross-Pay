@@ -256,6 +256,113 @@
   animation: wise-marquee 20s linear infinite;
 }
 
+.flag-ribbon {
+  --ribbon-progress: 0;
+  position: relative;
+  display: flex;
+  min-height: 152px;
+  align-items: center;
+  overflow: hidden;
+  background: var(--background);
+  isolation: isolate;
+}
+
+.flag-ribbon__runway {
+  position: absolute;
+  left: 0;
+  z-index: 0;
+  display: flex;
+  height: 112px;
+  width: min(48vw, 720px);
+  min-width: 310px;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: 0 56px 56px 0;
+  background: var(--brand-lime);
+  padding-right: 18px;
+  transform: translateX(calc((-100% + 72px) * (1 - var(--ribbon-progress))));
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.flag-ribbon__arrow {
+  display: grid;
+  height: 94px;
+  width: 94px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-ink);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--brand-lime) 72%, white);
+  color: var(--brand-lime);
+}
+
+.flag-ribbon__flags {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  gap: 18px;
+  margin-left: max(650px, 50vw);
+  padding-right: 24px;
+  transform: translateX(calc((-44vw + 72px) * (1 - var(--ribbon-progress))));
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.flag-ribbon__flag {
+  display: block;
+  height: 94px;
+  width: 94px;
+  flex: 0 0 94px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 5px var(--background);
+  transform: rotate(
+    calc(
+      (-280deg + (var(--ribbon-progress) * 280deg)) *
+        (1 + (var(--flag-index) * 0.045))
+    )
+  );
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.flag-ribbon__flag img {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .flag-ribbon {
+    min-height: 118px;
+  }
+
+  .flag-ribbon__runway {
+    height: 86px;
+    min-width: 220px;
+    padding-right: 10px;
+  }
+
+  .flag-ribbon__arrow,
+  .flag-ribbon__flag {
+    height: 70px;
+    width: 70px;
+    flex-basis: 70px;
+  }
+
+  .flag-ribbon__arrow {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand-lime) 72%, white);
+  }
+
+  .flag-ribbon__flags {
+    gap: 12px;
+    margin-left: 220px;
+  }
+}
+
 article[data-reveal],
 [data-reveal] > article {
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);

@@ -1,54 +1,11 @@
 import { n as __toESM } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
 import { n as require_jsx_runtime } from "../_libs/react+tanstack__react-query.mjs";
+import { t as Button } from "./button-CCKletB4.mjs";
 import { a as Search, c as LockKeyhole, d as Headphones, f as Clock3, g as ArrowRight, h as BriefcaseBusiness, i as ShieldCheck, l as Landmark, m as Building2, n as X, o as ReceiptText, p as ChevronDown, r as Users, s as Menu, t as Youtube, u as Instagram } from "../_libs/lucide-react.mjs";
-import { t as Slot } from "../_libs/radix-ui__react-slot.mjs";
-import { n as clsx, t as cva } from "../_libs/class-variance-authority+clsx.mjs";
-import { t as twMerge } from "../_libs/tailwind-merge.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-CZSc6tEB.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-B6C8FvEG.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
-function cn(...inputs) {
-	return twMerge(clsx(inputs));
-}
-var buttonVariants = cva("inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", {
-	variants: {
-		variant: {
-			default: "bg-primary text-primary-foreground hover:bg-primary/85",
-			lime: "bg-primary text-primary-foreground hover:bg-primary/85",
-			forest: "bg-brand-ink text-brand-lime hover:bg-brand-ink/90",
-			destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-			outline: "border border-brand-ink bg-transparent text-brand-ink hover:bg-brand-mist",
-			secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-			ghost: "hover:bg-accent hover:text-accent-foreground",
-			link: "text-primary underline-offset-4 hover:underline"
-		},
-		size: {
-			default: "h-[46px] px-6",
-			sm: "h-9 px-4",
-			lg: "h-14 px-9",
-			icon: "size-10 p-0",
-			"icon-sm": "size-8 p-0",
-			"icon-lg": "size-12 p-0"
-		}
-	},
-	defaultVariants: {
-		variant: "default",
-		size: "default"
-	}
-});
-var Button = import_react.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
-	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(asChild ? Slot : "button", {
-		ref,
-		className: cn(buttonVariants({
-			variant,
-			size,
-			className
-		})),
-		...props
-	});
-});
-Button.displayName = "Button";
 var globe_coins_default = "/assets/globe-coins-BAPHEfkI.jpg";
 var security_lock_default = "/assets/security-lock-BC3xdrKs.jpg";
 var phone_travel_default = "/assets/phone-travel-Y3B-rRqk.jpg";
@@ -109,15 +66,17 @@ var providers = [
 		total: "Calculated"
 	}
 ];
-var currencies = [
-	"🇪🇺",
-	"🇬🇧",
-	"🇺🇸",
-	"🇮🇳",
-	"🇲🇼",
-	"🇩🇰",
-	"🇷🇸",
-	"🇨🇲"
+var ribbonFlags = [
+	"eu",
+	"gb",
+	"us",
+	"in",
+	"mw",
+	"dk",
+	"rs",
+	"cm",
+	"ca",
+	"au"
 ];
 var transferCurrencies = [
 	{
@@ -621,22 +580,7 @@ function WisePage() {
 					})]
 				})
 			}),
-			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "flex items-center overflow-hidden bg-background py-8",
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-					className: "relative z-10 mr-5 flex h-24 w-1/3 min-w-[250px] items-center justify-end bg-primary pr-4",
-					children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-						className: "grid h-20 w-20 place-items-center rounded-full bg-brand-ink text-brand-lime",
-						children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowRight, { size: 44 })
-					})
-				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-					className: "motion-marquee flex shrink-0 gap-4",
-					children: [...currencies, ...currencies].map((flag, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-						className: "grid h-20 w-20 place-items-center rounded-full bg-surface text-4xl",
-						children: flag
-					}, `${flag}-${i}`))
-				})]
-			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(FlagRibbon, {}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", {
 				id: "platform",
 				className: "bg-background py-20",
@@ -862,6 +806,58 @@ function TransferCard({ amount, setAmount }) {
 				onClose: () => setPickerFor(null)
 			})
 		]
+	});
+}
+function FlagRibbon() {
+	const ribbonRef = (0, import_react.useRef)(null);
+	const [progress, setProgress] = (0, import_react.useState)(0);
+	(0, import_react.useEffect)(() => {
+		let animationFrame = 0;
+		const updateProgress = () => {
+			animationFrame = 0;
+			const element = ribbonRef.current;
+			if (!element) return;
+			const rect = element.getBoundingClientRect();
+			const viewportHeight = window.innerHeight;
+			const nextProgress = Math.max(0, Math.min(1, (viewportHeight - rect.top) / (viewportHeight + rect.height * .35)));
+			setProgress((current) => Math.abs(current - nextProgress) > .01 ? nextProgress : current);
+		};
+		const onScroll = () => {
+			if (!animationFrame) animationFrame = window.requestAnimationFrame(updateProgress);
+		};
+		updateProgress();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		window.addEventListener("resize", onScroll);
+		return () => {
+			window.removeEventListener("scroll", onScroll);
+			window.removeEventListener("resize", onScroll);
+			if (animationFrame) window.cancelAnimationFrame(animationFrame);
+		};
+	}, []);
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		ref: ribbonRef,
+		className: "flag-ribbon",
+		style: { "--ribbon-progress": progress },
+		"aria-label": "Currencies available with Slash Pay",
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+			className: "flag-ribbon__runway",
+			"aria-hidden": "true",
+			children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+				className: "flag-ribbon__arrow",
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowRight, { size: 44 })
+			})
+		}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+			className: "flag-ribbon__flags",
+			"aria-hidden": "true",
+			children: ribbonFlags.map((code, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+				className: "flag-ribbon__flag",
+				style: { "--flag-index": index },
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("img", {
+					src: `https://flagcdn.com/w160/${code}.png`,
+					alt: ""
+				})
+			}, code))
+		})]
 	});
 }
 function CurrencyChip({ currency, onClick }) {

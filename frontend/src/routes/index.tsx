@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -106,6 +106,18 @@ const providers = [
 ];
 
 const currencies = ["🇪🇺", "🇬🇧", "🇺🇸", "🇮🇳", "🇲🇼", "🇩🇰", "🇷🇸", "🇨🇲"];
+const ribbonFlags = [
+  "eu",
+  "gb",
+  "us",
+  "in",
+  "mw",
+  "dk",
+  "rs",
+  "cm",
+  "ca",
+  "au",
+];
 
 type TransferCurrency = {
   code: string;
@@ -400,23 +412,7 @@ function WisePage() {
         </div>
       </section>
 
-      <div className="flex items-center overflow-hidden bg-background py-8">
-        <div className="relative z-10 mr-5 flex h-24 w-1/3 min-w-[250px] items-center justify-end bg-primary pr-4">
-          <span className="grid h-20 w-20 place-items-center rounded-full bg-brand-ink text-brand-lime">
-            <ArrowRight size={44} />
-          </span>
-        </div>
-        <div className="motion-marquee flex shrink-0 gap-4">
-          {[...currencies, ...currencies].map((flag, i) => (
-            <span
-              key={`${flag}-${i}`}
-              className="grid h-20 w-20 place-items-center rounded-full bg-surface text-4xl"
-            >
-              {flag}
-            </span>
-          ))}
-        </div>
-      </div>
+      <FlagRibbon />
 
       <section id="platform" className="bg-background py-20">
         <div className="page-shell space-y-28">
@@ -597,6 +593,76 @@ function TransferCard({
           onClose={() => setPickerFor(null)}
         />
       )}
+    </div>
+  );
+}
+
+function FlagRibbon() {
+  const ribbonRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let animationFrame = 0;
+    const updateProgress = () => {
+      animationFrame = 0;
+      const element = ribbonRef.current;
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const nextProgress = Math.max(
+        0,
+        Math.min(
+          1,
+          (viewportHeight - rect.top) / (viewportHeight + rect.height * 0.35),
+        ),
+      );
+      setProgress((current) =>
+        Math.abs(current - nextProgress) > 0.01 ? nextProgress : current,
+      );
+    };
+    const onScroll = () => {
+      if (!animationFrame)
+        animationFrame = window.requestAnimationFrame(updateProgress);
+    };
+    updateProgress();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
+  const style = { "--ribbon-progress": progress } as CSSProperties &
+    Record<string, number>;
+
+  return (
+    <div
+      ref={ribbonRef}
+      className="flag-ribbon"
+      style={style}
+      aria-label="Currencies available with Slash Pay"
+    >
+      <div className="flag-ribbon__runway" aria-hidden="true">
+        <span className="flag-ribbon__arrow">
+          <ArrowRight size={44} />
+        </span>
+      </div>
+      <div className="flag-ribbon__flags" aria-hidden="true">
+        {ribbonFlags.map((code, index) => (
+          <span
+            className="flag-ribbon__flag"
+            key={code}
+            style={
+              { "--flag-index": index } as CSSProperties &
+                Record<string, number>
+            }
+          >
+            <img src={`https://flagcdn.com/w160/${code}.png`} alt="" />
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

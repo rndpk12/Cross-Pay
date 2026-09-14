@@ -1,31 +1,10 @@
-import { n as __toESM } from "../_runtime.mjs";
-import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { c as HeadContent, d as Outlet, f as lazyRouteComponent, g as useRouter, h as Link, m as createRootRouteWithContext, p as createFileRoute, s as Scripts, u as createRouter } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as require_jsx_runtime, t as QueryClientProvider } from "../_libs/react+tanstack__react-query.mjs";
+import "./button-CCKletB4.mjs";
+import { c as HeadContent, d as Outlet, f as lazyRouteComponent, g as useRouter, h as Link, m as createRootRouteWithContext, p as createFileRoute, s as Scripts, u as createRouter } from "../_libs/@tanstack/react-router+[...].mjs";
 import { t as QueryClient } from "../_libs/tanstack__query-core.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-CZHAdWlo.js
-var import_react = /* @__PURE__ */ __toESM(require_react());
+//#region node_modules/.nitro/vite/services/ssr/assets/router-pbCLQebK.js
 var import_jsx_runtime = require_jsx_runtime();
-var styles_default = "/assets/styles-DBRgNAN9.css";
-function reportLovableError(error, context = {}) {
-	if (typeof window === "undefined") return;
-	window.__lovableEvents?.captureException?.(error, {
-		source: "react_error_boundary",
-		route: window.location.pathname,
-		...context
-	}, {
-		mechanism: "react_error_boundary",
-		handled: false,
-		severity: "error"
-	});
-	const message = error instanceof Response ? `Response ${error.status}${error.url ? ` at ${error.url}` : ""}` : error instanceof Error ? error.message : String(error);
-	const stack = error instanceof Error ? error.stack : void 0;
-	window.__lovableReportRuntimeError?.({
-		message,
-		...stack !== void 0 && { stack },
-		filename: window.location.pathname
-	});
-}
+var styles_default = "/assets/styles-DPZ7YwmK.css";
 function NotFoundComponent() {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 		className: "flex min-h-screen items-center justify-center bg-background px-4",
@@ -59,9 +38,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }) {
 	console.error(error);
 	const router = useRouter();
-	(0, import_react.useEffect)(() => {
-		reportLovableError(error, { boundary: "tanstack_root_error_component" });
-	}, [error]);
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 		className: "flex min-h-screen items-center justify-center bg-background px-4",
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -129,7 +105,7 @@ var Route$1 = createRootRouteWithContext()({
 			},
 			{
 				name: "twitter:site",
-				content: "@Lovable"
+				content: "@SlashPay"
 			}
 		],
 		links: [
@@ -175,7 +151,7 @@ function RootComponent() {
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Outlet, {})
 	});
 }
-var $$splitComponentImporter = () => import("./routes-CZSc6tEB.mjs");
+var $$splitComponentImporter = () => import("./routes-B6C8FvEG.mjs");
 var rootRouteChildren = { IndexRoute: createFileRoute("/")({
 	head: () => ({ meta: [
 		{ title: "Slash Pay: The international account" },
